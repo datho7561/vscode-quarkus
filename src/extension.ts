@@ -14,19 +14,20 @@
  * limitations under the License.
  */
 import * as path from 'path';
+import { commands, ConfigurationChangeEvent, Disposable, ExtensionContext, languages, Terminal, TextDocument, window, workspace } from 'vscode';
 import { VSCodeCommands } from './definitions/constants';
-import { ExtensionContext, commands, window, workspace, Terminal, languages, TextDocument, ConfigurationChangeEvent, Disposable } from 'vscode';
-import { QuarkusContext } from './QuarkusContext';
-import { addExtensionsWizard } from './wizards/addExtensions/addExtensionsWizard';
-import { createTerminateDebugListener } from './wizards/debugging/terminateProcess';
-import quarkusProjectListener from './QuarkusProjectListener';
-import { generateProjectWizard } from './wizards/generateProject/generationWizard';
-import { tryStartDebugging } from './wizards/debugging/startDebugging';
-import { WelcomeWebview } from './webviews/WelcomeWebview';
-import { QuarkusConfig, PropertiesLanguageMismatch } from './QuarkusConfig';
-import { terminalCommandRunner } from './terminal/terminalCommandRunner';
 import { ProjectLabelInfo } from './definitions/ProjectLabelInfo';
-import { requestStandardMode } from './utils/requestStandardMode';
+import { PropertiesLanguageMismatch, QuarkusConfig } from './QuarkusConfig';
+import { QuarkusContext } from './QuarkusContext';
+import quarkusProjectListener from './QuarkusProjectListener';
+import { terminalCommandRunner } from './terminal/terminalCommandRunner';
+import { requestStandardMode, runWithStandardMode } from './utils/requestStandardMode';
+import { WelcomeWebview } from './webviews/WelcomeWebview';
+import { addExtensionsWizard } from './wizards/addExtensions/addExtensionsWizard';
+import { tryStartDebugging } from './wizards/debugging/startDebugging';
+import { createTerminateDebugListener } from './wizards/debugging/terminateProcess';
+import { deployToOpenShift } from './wizards/deployToOpenShift/deployToOpenShift';
+import { generateProjectWizard } from './wizards/generateProject/generationWizard';
 
 export function activate(context: ExtensionContext) {
   QuarkusContext.setContext(context);
@@ -122,9 +123,9 @@ export function activate(context: ExtensionContext) {
             const CONFIGURE_IN_SETTINGS = "Configure in Settings";
             const DISABLE_IN_SETTINGS = "Disable Language Updating";
             const response: Thenable<string> = window.showInformationMessage(
-                `Quarkus Tools for Visual Studio Code automatically switched the language ID of '${fileName}' `
-                + `to be '${languageId}' in order to provide language support. `
-                + `This behavior can be configured in settings.`, DISABLE_IN_SETTINGS, CONFIGURE_IN_SETTINGS);
+              `Quarkus Tools for Visual Studio Code automatically switched the language ID of '${fileName}' `
+              + `to be '${languageId}' in order to provide language support. `
+              + `This behavior can be configured in settings.`, DISABLE_IN_SETTINGS, CONFIGURE_IN_SETTINGS);
             response.then(result => {
               if (result === CONFIGURE_IN_SETTINGS) {
                 commands.executeCommand('workbench.action.openSettings', QuarkusConfig.PROPERTIES_LANGUAGE_MISMATCH);
@@ -154,10 +155,6 @@ function displayWelcomePageIfNeeded(context: ExtensionContext): void {
 
 function registerVSCodeCommands(context: ExtensionContext) {
 
-  const notAQuarkusProjectWarning: (ignored: any) => PromiseLike<any> = (ignored: any): PromiseLike<any> => {
-    return window.showErrorMessage('No Quarkus projects were detected in this folder', 'Ok');
-  };
-
   /**
    * Command for creating a Quarkus Maven project
    */
@@ -166,43 +163,31 @@ function registerVSCodeCommands(context: ExtensionContext) {
   }));
 
   /**
+   * Command for displaying welcome page
+   */
+  context.subscriptions.push(commands.registerCommand(VSCodeCommands.QUARKUS_WELCOME, () => {
+    WelcomeWebview.createOrShow(context);
+  }));
+
+  /**
    * Command for adding Quarkus extensions to current Quarkus Maven project
    */
   context.subscriptions.push(commands.registerCommand(VSCodeCommands.ADD_EXTENSIONS, () => {
-    requestStandardMode("Adding extensions").then((isStandardMode) => {
-      if (isStandardMode) {
-        ProjectLabelInfo.getWorkspaceProjectLabelInfo().then((projectLabelInfo: ProjectLabelInfo[]) => {
-          if (projectLabelInfo.filter(info => info.isQuarkusProject()).length) {
-            addExtensionsWizard();
-          } else {
-            notAQuarkusProjectWarning(null);
-          }
-        }).catch(notAQuarkusProjectWarning);
-      }
-    });
+    runWithStandardMode(addExtensionsWizard, "Adding extensions");
   }));
 
   /**
    * Command for debugging current Quarkus Maven project
    */
   context.subscriptions.push(commands.registerCommand(VSCodeCommands.DEBUG_QUARKUS_PROJECT, () => {
-    requestStandardMode("Debugging the project").then((isStandardMode) => {
-      if (isStandardMode) {
-        ProjectLabelInfo.getWorkspaceProjectLabelInfo().then((projectLabelInfo: ProjectLabelInfo[]) => {
-          if (projectLabelInfo.filter(info => info.isQuarkusProject()).length) {
-            tryStartDebugging();
-          } else {
-            notAQuarkusProjectWarning(null);
-          }
-        }).catch(notAQuarkusProjectWarning);
-      }
-    });
+    runWithStandardMode(tryStartDebugging, "Debugging the project");
   }));
 
   /**
-   * Command for displaying welcome page
+   * Command for deploying a Quarkus project to OpenShift
    */
-  context.subscriptions.push(commands.registerCommand(VSCodeCommands.QUARKUS_WELCOME, () => {
-    WelcomeWebview.createOrShow(context);
+  context.subscriptions.push(commands.registerCommand(VSCodeCommands.DEPLOY_TO_OPENSHIFT, () => {
+    runWithStandardMode(deployToOpenShift, "Deploying to OpenShift");
   }));
+
 }
