@@ -411,8 +411,7 @@
     "test-all": "npm test && npm run test-ui-run"
   },
   "resolutions": {
-    "minimist": "1.2.6",
-    "vsce": "1.103.1"
+    "minimist": "1.2.6"
   },
   "devDependencies": {
     "@types/chai": "^4.2.3",
@@ -431,6 +430,7 @@
     "@types/yauzl": "^2.9.1",
     "@typescript-eslint/eslint-plugin": "^5.30.5",
     "@typescript-eslint/parser": "^5.30.5",
+    "@vscode/test-electron": "^2.1.5",
     "chai": "^4.2.0",
     "chai-fs": "^2.0.0",
     "datho7561-vscode-extension-tester": "4.3.0-datho7561",
@@ -443,7 +443,6 @@
     "pom-parser": "^1.2.0",
     "ts-loader": "^9.0.0",
     "typescript": "^4.7.4",
-    "vsce": "^1.0.0",
     "vscode-test": "^1.2.3",
     "webpack": "^5.28.0",
     "webpack-cli": "^4.9.1"
